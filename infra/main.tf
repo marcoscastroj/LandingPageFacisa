@@ -9,7 +9,7 @@ variable "project_name" {
 # Pense nisso como a "casca" ou o "contêiner" para o seu site.
 resource "vercel_project" "landing_page" {
   name      = var.project_name
-  framework = "vitepress" # Framework aceito pela Vercel para sites estáticos
+  framework = "static" # Framework aceito pela Vercel para sites estáticos
 }
 
 # 2. Lê os arquivos do diretório gerado pela pipeline
