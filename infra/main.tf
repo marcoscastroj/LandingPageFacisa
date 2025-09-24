@@ -17,14 +17,6 @@ data "vercel_project_directory" "site" {
   path = "../site-content"
 }
 
-resource "null_resource" "content_hash" {
-  triggers = {
-    # Calcula um hash (assinatura única) de todos os arquivos.
-    # Se qualquer arquivo mudar, este valor de 'files_md5' vai mudar.
-    files_md5 = md5(jsonencode(data.vercel_project_directory.site.files))
-  }
-}
-
 # 3. Cria o deploy (a publicação) do site dentro do projeto
 # Este recurso pega os arquivos locais e os envia para a Vercel.
 resource "vercel_deployment" "production" {
@@ -33,12 +25,6 @@ resource "vercel_deployment" "production" {
   path_prefix = "../site-content"
 
   production = true
-
-  lifecycle {
-    replace_triggered_by = [
-      null_resource.content_hash,
-    ]
-  }
 }
 
 # 4. Define uma saída (output) para mostrar a URL final
