@@ -81,9 +81,6 @@ jobs:
 
         - name: Terraform Init
           run: terraform -chdir=infra init
-          run: run: terraform -chdir=infra import vercel_project.landing_page <PROJECT_ID>
-          env:
-            VERCEL_API_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
         - name: Terraform Apply (Deploy para Vercel)
           env:
