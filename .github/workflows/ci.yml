@@ -91,7 +91,6 @@ jobs:
           gsutil -m rsync -r ./site_content gs://$BUCKET_NAME
           
       - name: Obter URL do site
-        # ... (igual antes)
         id: get_url
         run: |
           WEBSITE_URL=$(terraform -chdir=infra output -raw website_url)
