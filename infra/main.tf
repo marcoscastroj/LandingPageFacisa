@@ -17,24 +17,17 @@ resource "vercel_project" "landing_page" {
 resource "vercel_deployment" "production" {
   project_id = vercel_project.landing_page.id
 
-  # Aponta para a pasta onde a pipeline extraiu os arquivos da imagem Docker.
-  # O Terraform está na pasta 'infra', então '../site-content' significa
-  # "volte um diretório e entre em 'site-content'".
-  files       = fileset("../site-content", "**")
+  files       = fileset("../site-content", "*")
   path_prefix = "../site-content"
 
-  # Bloco especial que força o Terraform a criar um novo deploy
-  # sempre que o conteúdo dos arquivos na pasta mudar. Essencial!
-  lifecycle {
-    replace_triggered_by = [
-      fileset("../site-content", "**"),
-    ]
+  # Faz o deploy ser recriado se os arquivos mudarem
+  triggers = {
+    content_hash = join("", fileset("../site-content", "*"))
   }
 
-  # Define que este deploy deve ser o de "produção", ou seja,
-  # ele será o que aparecerá na URL principal do seu projeto.
   production = true
 }
+
 
 # 3. Define uma saída (output) para mostrar a URL final
 # Isso é útil para ver o resultado no final da execução da pipeline.
