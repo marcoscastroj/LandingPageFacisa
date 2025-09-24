@@ -30,7 +30,7 @@ A pipeline CI/CD automatiza o processo de build, teste e deploy da aplicação. 
   - Faz login no Docker Hub usando segredos.
   - Constrói e publica a imagem Docker da aplicação, versionando com o hash do commit.
 4. **Job de Deploy no GCP**:
-  - Realiza checkout do código.
+  - Realiza o uso da imagem do dockerhub.
   - Autentica na Google Cloud usando uma chave de serviço.
   - Instala o Terraform.
   - Configura o projeto GCP via `gcloud` CLI.

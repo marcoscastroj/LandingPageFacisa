@@ -1,13 +1,11 @@
 terraform {
   required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
+    vercel = {
+      source  = "vercel/vercel"
+      version = "1.0.0" # Versão específica para consistência
     }
   }
 }
 
-provider "google" {
-  # O projeto e a região serão configurados na pipeline
-  # para maior flexibilidade.
-}
+# O token da API será passado por variável de ambiente na pipeline
+provider "vercel" {}

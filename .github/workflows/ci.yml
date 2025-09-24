@@ -46,52 +46,46 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }} # Versiona com o hash do commit
 
   # Job 3: Fazer o deploy no Google Cloud (GCP)
-  deploy:
+deploy-to-vercel:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: build-and-push-docker # Só roda depois que a imagem for criada
     
     environment:
       name: production
-      url: ${{ steps.get_url.outputs.url }}
-
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+      url: https://${{ steps.get_url.outputs.project_name }}.vercel.app
 
     steps:
+      # NÃO FAZEMOS CHECKOUT DO CÓDIGO AQUI!
 
-      - name: Autenticar com o Google Cloud
-        uses: 'google-github-actions/auth@v2'
+      - name: Login no Docker Hub (para poder puxar a imagem)
+        uses: docker/login-action@v3
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Instalar Terraform e Configurar gcloud
-        uses: hashicorp/setup-terraform@v3
-      - run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Terraform Apply (Garantir que a infra existe)
-        run: terraform -chdir=infra apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Puxar a imagem Docker da etapa de build
-        run: |
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
 
       - name: Extrair conteúdo do site da imagem Docker
         run: |
-          # Cria um container temporário a partir da imagem, sem iniciá-lo
+          mkdir ./site-content
           docker create --name temp_container ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
-          # Copia os arquivos de dentro do container para uma pasta local no runner
-          docker cp temp_container:/usr/share/nginx/html ./site_content
-          # Remove o container temporário
+          docker cp temp_container:/usr/share/nginx/html/. ./site-content
           docker rm temp_container
 
-      - name: Sincronizar arquivos extraídos com o GCS Bucket
-        run: |
-          BUCKET_NAME=$(terraform -chdir=infra output -raw bucket_name)
-          gsutil -m rsync -r ./site_content gs://$BUCKET_NAME
-          
-      - name: Obter URL do site
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Terraform Apply (Deploy para Vercel)
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: terraform -chdir=infra apply -auto-approve
+
+      - name: Obter Nome do Projeto para a URL
         id: get_url
         run: |
-          WEBSITE_URL=$(terraform -chdir=infra output -raw website_url)
-          echo "url=$WEBSITE_URL" >> $GITHUB_OUTPUT
+          PROJECT_NAME=$(terraform -chdir=infra output -raw website_url | sed 's|https://\(.*\)\.vercel\.app|\1|')
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
