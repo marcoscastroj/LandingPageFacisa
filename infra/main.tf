@@ -9,29 +9,28 @@ variable "project_name" {
 # Pense nisso como a "casca" ou o "contêiner" para o seu site.
 resource "vercel_project" "landing_page" {
   name      = var.project_name
-  framework = "vitepress" # Informa à Vercel que é um site estático simples, sem frameworks.
+  framework = "vitepress" # Framework aceito pela Vercel para sites estáticos
 }
 
-# 2. Cria o deploy (a publicação) do site dentro do projeto
+# 2. Lê os arquivos do diretório gerado pela pipeline
+# Esse data source converte os arquivos em um mapa de strings compatível com a Vercel
+data "vercel_project_directory" "site" {
+  path = "../site-content"
+}
+
+# 3. Cria o deploy (a publicação) do site dentro do projeto
 # Este recurso pega os arquivos locais e os envia para a Vercel.
 resource "vercel_deployment" "production" {
-  project_id = vercel_project.landing_page.id
-
-  files       = fileset("../site-content", "*")
+  project_id  = vercel_project.landing_page.id
+  files       = data.vercel_project_directory.site.files
   path_prefix = "../site-content"
-
-  # Faz o deploy ser recriado se os arquivos mudarem
-  triggers = {
-    content_hash = join("", fileset("../site-content", "*"))
-  }
 
   production = true
 }
 
-
-# 3. Define uma saída (output) para mostrar a URL final
+# 4. Define uma saída (output) para mostrar a URL final
 # Isso é útil para ver o resultado no final da execução da pipeline.
 output "website_url" {
   description = "A URL final do site publicado na Vercel."
-  value       = "https://${vercel_project.landing_page.name}.vercel.app"
+  value       = vercel_deployment.production.url
 }
