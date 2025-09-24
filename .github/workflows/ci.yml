@@ -1,37 +1,94 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline Landing Page
 
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:   # permite execução manual
+  workflow_dispatch: # Permite acionar manualmente
 
 jobs:
-  build:
+  # Job 1: Rodar os testes
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Configurar Docker
-        run: docker --version
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Build da imagem
-        run: docker build -t landing-page .
+      - name: Instalar dependências
+        run: npm install
 
-  terraform:
+      - name: Rodar testes
+        run: npm test
+
+  # Job 2: Construir e publicar a imagem Docker
+  build-and-push:
     runs-on: ubuntu-latest
-    needs: build
+    needs: test # <<< SÓ RODA SE O JOB 'test' PASSAR
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build e Push da imagem Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:${{ github.sha }} # Versiona com o hash do commit
+
+  # Job 3: Fazer o deploy no Google Cloud (GCP)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    
+    environment:
+      name: production
+      url: ${{ steps.get_url.outputs.url }}
+
+    # Adiciona permissões para autenticar com o Google
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Autenticar com o Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Init Terraform
-        working-directory: infra
-        run: terraform init
+      # Configura o gcloud CLI para usar o projeto correto
+      - name: Configurar gcloud
+        run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Validate Terraform
-        working-directory: infra
-        run: terraform validate
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Terraform Apply
+        # Passa o ID do projeto como variável para o Terraform
+        run: terraform -chdir=infra apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+
+      - name: Sincronizar arquivos com o GCS Bucket
+        run: |
+          BUCKET_NAME=$(terraform -chdir=infra output -raw bucket_name)
+          gsutil -m rsync -r . gs://$BUCKET_NAME -x "infra/.*|\\.git/.*|node_modules/.*"
+          
+      - name: Obter URL do site
+        id: get_url
+        run: |
+          WEBSITE_URL=$(terraform -chdir=infra output -raw website_url)
+          echo "url=$WEBSITE_URL" >> $GITHUB_OUTPUT
