@@ -45,7 +45,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }} # Versiona com o hash do commit
 
-  # Job 3: Fazer o deploy no Google Cloud (GCP)
+  # Job 3: Fazer o deploy no Vercel
   deploy-to-vercel:
       runs-on: ubuntu-latest
       needs: build-and-push # Só roda depois que a imagem for criada
@@ -55,7 +55,6 @@ jobs:
         url: https://${{ steps.get_url.outputs.project_name }}.vercel.app
 
       steps:
-        # NÃO FAZEMOS CHECKOUT DO CÓDIGO AQUI!
 
         - name: Checkout código
           uses: actions/checkout@v4
