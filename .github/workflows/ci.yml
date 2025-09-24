@@ -57,6 +57,9 @@ jobs:
       steps:
         # NÃO FAZEMOS CHECKOUT DO CÓDIGO AQUI!
 
+        - name: Checkout código
+          uses: actions/checkout@v4
+
         - name: Login no Docker Hub (para poder puxar a imagem)
           uses: docker/login-action@v3
           with:
