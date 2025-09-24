@@ -9,7 +9,7 @@ variable "project_name" {
 # Pense nisso como a "casca" ou o "contêiner" para o seu site.
 resource "vercel_project" "landing_page" {
   name      = var.project_name
-  framework = "other" # Informa à Vercel que é um site estático simples, sem frameworks.
+  framework = "vitepress" # Informa à Vercel que é um site estático simples, sem frameworks.
 }
 
 # 2. Cria o deploy (a publicação) do site dentro do projeto
