@@ -46,46 +46,46 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }} # Versiona com o hash do commit
 
   # Job 3: Fazer o deploy no Google Cloud (GCP)
-deploy-to-vercel:
-    runs-on: ubuntu-latest
-    needs: build-and-push-docker # Só roda depois que a imagem for criada
-    
-    environment:
-      name: production
-      url: https://${{ steps.get_url.outputs.project_name }}.vercel.app
+  deploy-to-vercel:
+      runs-on: ubuntu-latest
+      needs: build-and-push-docker # Só roda depois que a imagem for criada
+      
+      environment:
+        name: production
+        url: https://${{ steps.get_url.outputs.project_name }}.vercel.app
 
-    steps:
-      # NÃO FAZEMOS CHECKOUT DO CÓDIGO AQUI!
+      steps:
+        # NÃO FAZEMOS CHECKOUT DO CÓDIGO AQUI!
 
-      - name: Login no Docker Hub (para poder puxar a imagem)
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        - name: Login no Docker Hub (para poder puxar a imagem)
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Puxar a imagem Docker da etapa de build
-        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
+        - name: Puxar a imagem Docker da etapa de build
+          run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
 
-      - name: Extrair conteúdo do site da imagem Docker
-        run: |
-          mkdir ./site-content
-          docker create --name temp_container ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
-          docker cp temp_container:/usr/share/nginx/html/. ./site-content
-          docker rm temp_container
+        - name: Extrair conteúdo do site da imagem Docker
+          run: |
+            mkdir ./site-content
+            docker create --name temp_container ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
+            docker cp temp_container:/usr/share/nginx/html/. ./site-content
+            docker rm temp_container
 
-      - name: Instalar Terraform
-        uses: hashicorp/setup-terraform@v3
+        - name: Instalar Terraform
+          uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform -chdir=infra init
+        - name: Terraform Init
+          run: terraform -chdir=infra init
 
-      - name: Terraform Apply (Deploy para Vercel)
-        env:
-          VERCEL_API_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: terraform -chdir=infra apply -auto-approve
+        - name: Terraform Apply (Deploy para Vercel)
+          env:
+            VERCEL_API_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          run: terraform -chdir=infra apply -auto-approve
 
-      - name: Obter Nome do Projeto para a URL
-        id: get_url
-        run: |
-          PROJECT_NAME=$(terraform -chdir=infra output -raw website_url | sed 's|https://\(.*\)\.vercel\.app|\1|')
-          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+        - name: Obter Nome do Projeto para a URL
+          id: get_url
+          run: |
+            PROJECT_NAME=$(terraform -chdir=infra output -raw website_url | sed 's|https://\(.*\)\.vercel\.app|\1|')
+            echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
