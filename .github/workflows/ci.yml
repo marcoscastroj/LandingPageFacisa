@@ -54,40 +54,44 @@ jobs:
       name: production
       url: ${{ steps.get_url.outputs.url }}
 
-    # Adiciona permissões para autenticar com o Google
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
 
       - name: Autenticar com o Google Cloud
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Instalar Terraform
+      - name: Instalar Terraform e Configurar gcloud
         uses: hashicorp/setup-terraform@v3
+      - run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
-      # Configura o gcloud CLI para usar o projeto correto
-      - name: Configurar gcloud
-        run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Terraform Init
-        run: terraform -chdir=infra init
-
-      - name: Terraform Apply
-        # Passa o ID do projeto como variável para o Terraform
+      - name: Terraform Apply (Garantir que a infra existe)
         run: terraform -chdir=infra apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
 
-      - name: Sincronizar arquivos com o GCS Bucket
+      - name: Puxar a imagem Docker da etapa de build
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
+
+      - name: Extrair conteúdo do site da imagem Docker
+        run: |
+          # Cria um container temporário a partir da imagem, sem iniciá-lo
+          docker create --name temp_container ${{ secrets.DOCKERHUB_USERNAME }}/landingpage:1.0.${{ github.run_number }}
+          # Copia os arquivos de dentro do container para uma pasta local no runner
+          docker cp temp_container:/usr/share/nginx/html ./site_content
+          # Remove o container temporário
+          docker rm temp_container
+
+      - name: Sincronizar arquivos extraídos com o GCS Bucket
         run: |
           BUCKET_NAME=$(terraform -chdir=infra output -raw bucket_name)
-          gsutil -m rsync -r . gs://$BUCKET_NAME -x "infra/.*|\\.git/.*|node_modules/.*"
+          gsutil -m rsync -r ./site_content gs://$BUCKET_NAME
           
       - name: Obter URL do site
+        # ... (igual antes)
         id: get_url
         run: |
           WEBSITE_URL=$(terraform -chdir=infra output -raw website_url)
