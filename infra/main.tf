@@ -25,6 +25,12 @@ resource "vercel_deployment" "production" {
   path_prefix = "../site-content"
 
   production = true
+
+  lifecycle {
+    replace_triggered_by = [
+      md5(jsonencode(data.vercel_project_directory.site.files))
+    ]
+  }
 }
 
 # 4. Define uma saída (output) para mostrar a URL final
