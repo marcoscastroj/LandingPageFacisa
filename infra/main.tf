@@ -2,7 +2,7 @@
 variable "project_name" {
   description = "O nome que o projeto terá na Vercel (deve ser único na sua conta)."
   type        = string
-  default     = "landingpage-facisa" # Você pode mudar este nome se quiser
+  default     = "landingpage-facisa" 
 }
 
 # 1. Cria um novo projeto na Vercel
