@@ -1,21 +1,21 @@
 # Integração da Pipeline CI/CD com Terraform
 
-Este documento detalha como a pipeline de integração contínua (CI/CD) está integrada ao Terraform para provisionamento de infraestrutura na Google Cloud Platform (GCP), explicando também os arquivos `main.tf` e `provider.tf` e cada etapa do deploy.
+Este documento detalha como a pipeline de integração contínua (CI/CD) está integrada ao Terraform para provisionamento e deploy do site na Vercel, explicando também os arquivos `main.tf` e `provider.tf` e cada etapa do deploy.
 
 ## Visão Geral
 
-A pipeline CI/CD automatiza o processo de build, teste e deploy da aplicação. O Terraform é utilizado para gerenciar e provisionar a infraestrutura necessária para o ambiente de hospedagem.
+A pipeline CI/CD automatiza o processo de build, teste e deploy da aplicação. O Terraform é utilizado para gerenciar e provisionar o deploy do site estático diretamente na Vercel.
 
 ## Estrutura dos Arquivos Terraform
 
-- **provider.tf**: Define o provedor do Terraform, neste caso o Google Cloud (`hashicorp/google`). Permite que o Terraform se comunique com a GCP. A configuração do projeto e região é feita dinamicamente pela pipeline, usando variáveis e segredos.
+- **provider.tf**: Define o provedor do Terraform, neste caso o Vercel (`vercel/vercel`). Permite que o Terraform se comunique com a plataforma Vercel para criar projetos e realizar deploys.
 
 - **main.tf**:
-  - Declara variáveis como `project_id` (ID do projeto GCP) e `bucket_name` (nome do bucket).
-  - Cria um bucket no Google Cloud Storage para hospedar o site estático.
-  - Configura o bucket para servir o arquivo `index.html` como página principal.
-  - Libera acesso público ao bucket para que qualquer usuário possa acessar o site.
-  - Define uma saída (`output`) com a URL pública do site provisionado.
+  - Declara a variável `project_name` para definir o nome do projeto na Vercel.
+  - Cria o projeto na Vercel com o recurso `vercel_project`.
+  - Lê os arquivos do diretório gerado pela pipeline (`site-content`) usando o data source `vercel_project_directory`.
+  - Realiza o deploy do site com o recurso `vercel_deployment`, enviando os arquivos para produção.
+  - Define uma saída (`output`) com a URL final do site publicado na Vercel.
 
 ## Fluxo de Execução da Pipeline
 
@@ -28,28 +28,27 @@ A pipeline CI/CD automatiza o processo de build, teste e deploy da aplicação. 
 3. **Job de Build e Push Docker**:
   - Realiza checkout do código.
   - Faz login no Docker Hub usando segredos.
-  - Constrói e publica a imagem Docker da aplicação, versionando com o hash do commit.
-4. **Job de Deploy no GCP**:
-  - Realiza o uso da imagem do dockerhub.
-  - Autentica na Google Cloud usando uma chave de serviço.
+  - Constrói e publica a imagem Docker da aplicação, versionando com o número do run.
+4. **Job de Deploy na Vercel**:
+  - Realiza checkout do código.
+  - Faz login no Docker Hub para puxar a imagem gerada.
+  - Puxa a imagem Docker e extrai o conteúdo estático do site para a pasta `site-content`.
   - Instala o Terraform.
-  - Configura o projeto GCP via `gcloud` CLI.
   - Executa `terraform init` para inicializar o diretório de infraestrutura.
-  - Executa `terraform apply` passando o ID do projeto como variável, provisionando o bucket e permissões.
-  - Sincroniza os arquivos do projeto com o bucket GCS usando `gsutil rsync`, excluindo pastas desnecessárias.
-  - Obtém a URL pública do site gerada pelo Terraform e a disponibiliza como output.
+  - Executa `terraform apply` para criar o projeto e realizar o deploy na Vercel, usando o token de API.
+  - Obtém a URL final do site publicado na Vercel e disponibiliza como output.
 
 ## Resumo dos Comandos Terraform na Pipeline
 - `terraform -chdir=infra init`: Inicializa o Terraform na pasta `infra`.
-- `terraform -chdir=infra apply -auto-approve -var="project_id=..."`: Aplica as mudanças, criando/atualizando recursos na GCP.
-- `terraform -chdir=infra output -raw website_url`: Obtém a URL pública do site provisionado.
+- `terraform -chdir=infra apply -auto-approve`: Cria o projeto e realiza o deploy do site na Vercel.
+- `terraform -chdir=infra output -raw website_url`: Obtém a URL final do site publicado na Vercel.
 
 
 ## Recomendações
 - Sempre revisar o plano (`terraform plan`) antes de aplicar mudanças.
 - Manter os arquivos Terraform atualizados conforme a evolução da aplicação.
 
-- Utilizar nomes de bucket únicos para evitar conflitos.
+- Utilizar nomes de projeto únicos na Vercel para evitar conflitos.
 
 ---
 
