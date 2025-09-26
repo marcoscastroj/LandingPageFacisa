@@ -6,7 +6,6 @@ variable "project_name" {
 }
 
 # 1. Cria um novo projeto na Vercel
-# Pense nisso como a "casca" ou o "contêiner" para o seu site.
 resource "vercel_project" "landing_page" {
   name      = var.project_name
 }
@@ -27,8 +26,6 @@ resource "vercel_deployment" "production" {
   production = true
 }
 
-# 4. Define uma saída (output) para mostrar a URL final
-# Isso é útil para ver o resultado no final da execução da pipeline.
 output "website_url" {
   description = "A URL final do site publicado na Vercel."
   value       = vercel_deployment.production.url
