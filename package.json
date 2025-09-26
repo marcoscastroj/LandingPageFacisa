@@ -1,0 +1,20 @@
+{
+  "name": "landingpagefacisa",
+  "version": "1.0.0",
+  "description": "- Landing page responsiva com o propósito de servir como um portfólio para os integrantes da equipe (Kaio Moreira e Miguel Farias). O projeto consiste em divulgação profissional dos integrantes contendo suas especialidades na área bem como casos de destaque.\r - Projeto responsivo\r - Deploy realizado no Vercel",
+  "main": "index.js",
+  "scripts": {
+  "test": "node test.js"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcoscastroj/LandingPageFacisa.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/marcoscastroj/LandingPageFacisa/issues"
+  },
+  "homepage": "https://github.com/marcoscastroj/LandingPageFacisa#readme"
+}
